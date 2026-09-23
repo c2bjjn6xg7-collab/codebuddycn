@@ -208,7 +208,7 @@ test("rejects symlinked target storage components", { concurrency: false }, asyn
     fs.rmSync(historyRoot, { recursive: true, force: true });
     const outside = path.join(temp, "outside-history");
     fs.mkdirSync(outside, { recursive: true });
-    fs.symlinkSync(outside, historyRoot, "dir");
+    fs.symlinkSync(outside, historyRoot, process.platform === "win32" ? "junction" : "dir");
     await assert.rejects(
       transferSessionForAccount({ sessionId, sourceUid, targetUid }),
       (error) => error instanceof SessionTransferError && error.code === "unsafe_session_path",

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { cliCommand, resolveCliEntrypoint } from "./codebuddycn-cli.mjs";
 import {
   getAccountSessionIdentity,
   prepareAccountRuntime,
@@ -118,10 +119,11 @@ function resolveCodeBuddyBin({ allowFallback = false } = {}) {
   const home = os.homedir();
   const candidates = WIN
     ? [
+        path.join(process.env.LOCALAPPDATA || path.join(home, "AppData", "Local"), "codebuddy", "bin", "codebuddy.exe"),
         path.join(home, ".codebuddy", "bin", "codebuddy.exe"),
         path.join(home, ".codebuddy", "bin", "cbc.exe"),
-        path.join(home, "AppData", "Roaming", "npm", "codebuddy.cmd"),
-        path.join(home, "AppData", "Roaming", "npm", "cbc.cmd"),
+        path.join(process.env.APPDATA || path.join(home, "AppData", "Roaming"), "npm", "codebuddy.cmd"),
+        path.join(process.env.APPDATA || path.join(home, "AppData", "Roaming"), "npm", "cbc.cmd"),
       ]
     : [
         path.join(home, ".local", "bin", "codebuddy"),
@@ -514,7 +516,8 @@ async function runSdk(sdk, prompt, options, { timeoutMs, stream, debug, onQuery 
 
 function runChild(bin, args, { cwd, env, input, timeoutMs, stream, debug, onSpawn }) {
   return new Promise((resolve) => {
-    const child = spawn(bin, args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
+    const launch = cliCommand(bin, args);
+    const child = spawn(launch.command, launch.args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
     onSpawn?.(child);
     let stdout = "";
     let stderr = "";
@@ -673,7 +676,7 @@ async function main(argv = process.argv.slice(2)) {
   if (opts.allowedTools.length) args.push("--allowedTools", ...opts.allowedTools);
   if (opts.disallowedTools.length) args.push("--disallowedTools", ...opts.disallowedTools);
 
-  const bin = resolveCodeBuddyBin({ allowFallback: opts.dryRun });
+  const bin = resolveCliEntrypoint(resolveCodeBuddyBin({ allowFallback: opts.dryRun }));
   const displayArgs = redactedArgs(args, prompt, promptIndex);
   const sdkPrompt = [input, prompt].filter(Boolean).join("\n\n");
   let sdkSystemPrompt;

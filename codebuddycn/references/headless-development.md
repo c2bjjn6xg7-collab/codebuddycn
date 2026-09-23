@@ -22,7 +22,7 @@ env CODEBUDDYCN_NATIVE_BIN="/verified/native/codebuddy" \
 
 这两条检查不请求模型。随后**每次** `codebuddycn-run.mjs` 调用都保留上述两个环境变量。它仍使用 SDK，不是 CLI 后端回退。使用者可从 `command -v codebuddy` 找到本机候选路径，再确认它不是本适配器本身；不要改写全局启动器或旧二进制。
 
-JS CLI 启动器及 Windows `.exe` 应按实际安装检查，不盲目套用 macOS/Linux 示例。本包未在 Windows/Linux 做真实登录及端到端调用验证。
+JS CLI 启动器及 Windows `.exe` 不套用 macOS/Linux 示例。Windows npm 的 `.cmd`/`.bat` 由预检和调用脚本解析到官方包内的 Node 入口，原生 `.exe` 直接执行；若找不到 npm 包入口，检查 CLI 安装或设置 `CODEBUDDYCN_BIN` 指向已确认的原生 `.exe`。本包未在 Windows/Linux 做真实登录及端到端调用验证。
 
 ## 工具暴露与自动批准
 

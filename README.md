@@ -1,90 +1,42 @@
-# CodeBuddy CN Skill 分享包
+# CodeBuddy CN Skill
 
-这是一份自包含的本地 Agent Skill：Kimi Code、Codex、Claude Code 使用同一份 `codebuddycn/`，通过腾讯官方 Agent SDK 调用使用者自己的 CodeBuddy 中国站账号。它保留一次性问答、可选多账户管理、持久会话和跨账户恢复功能。
+让 Kimi Code、Codex、Claude Code 等本地智能体，通过腾讯官方 Agent SDK 和独立 CLI 调用你自己的 CodeBuddy 中国站账号。支持问答、可选多账户管理、持久会话和跨账户恢复。
 
-包中没有附带账号、Token、手机号/邮箱名册、真实会话、个人模型偏好、机器绝对路径或外部符号链接。示例中的 `cb01` / `cb02` 是占位别名，测试里的账户与会话是虚构数据。
+## 让智能体安装
 
-从 GitHub 页面选择 **Code → Download ZIP** 下载，或使用 Git：
+把这句话发给你的智能体即可：
 
-```bash
-git clone https://github.com/c2bjjn6xg7-collab/codebuddycn.git codebuddycn-share
-cd codebuddycn-share
-```
+> 帮我安装这个 Skill：https://github.com/c2bjjn6xg7-collab/codebuddycn ，按仓库里的说明完成配置。
 
-下载后的仓库包含安装说明和 `codebuddycn/` Skill 文件夹。下面需要复制的是这个内层文件夹。
+**给执行安装的智能体：** 请读取 [codebuddycn/SKILL.md 的“安装与初始化”](codebuddycn/SKILL.md#安装与初始化)，完成环境识别、完整目录安装、依赖安装、CLI 适配和自检。Skill 位于仓库内层 `codebuddycn/`，不要只下载 `SKILL.md` 或把仓库根目录当作 Skill。首次账号登录由使用者完成。
 
-## 1. 安装到宿主
+安装步骤统一维护在 Skill 中；不需要使用者手动填写本机路径。手动下载也可用 GitHub 的 **Code → Download ZIP**，再让智能体读取其中的 `codebuddycn/SKILL.md`。
 
-把完整的 `codebuddycn` 文件夹复制到对应位置，不要只复制 `SKILL.md`。安装后重新启动宿主会话。目标已有同名 Skill 时先比较或备份，再由使用者决定如何更新，避免复制成 `codebuddycn/codebuddycn`。
+## 环境与支持范围
 
-| Harness | 用户级目录 | 手动使用 |
-|---|---|---|
-| Codex | `~/.agents/skills/codebuddycn/` | `$codebuddycn` |
-| Kimi Code | `~/.agents/skills/codebuddycn/` | `/skill:codebuddycn` |
-| Claude Code | `~/.claude/skills/codebuddycn/` | `/codebuddycn` |
+- 要求 **Node.js 22.13+**、npm，以及能够执行本地命令的智能体。仅聊天、不能运行本地 CLI 的环境无法直接使用。
+- SDK 固定为 `@tencent-ai/agent-sdk@0.3.256`，安装时下载依赖；独立 CodeBuddy Code CLI 仍需安装，`buddycn` IDE 启动器不能替代它。
+- 包含 macOS、Windows、Linux 适配。Windows 的官方 npm `.cmd` 启动器会自动解析到包内 Node 入口，原生 `.exe` 可直接使用；macOS/Linux 原生 CLI 的适配由智能体按 Skill 完成。
+- 验证覆盖本机预检和离线模拟；**尚未完成 Windows/Linux 的真实登录及端到端调用验证**。自检通过不等于账户、模型或额度可用。
 
-安装目录按官方说明核对：[Codex](https://learn.chatgpt.com/docs/build-skills)、[Kimi Code](https://moonshotai.github.io/kimi-code/en/customization/skills.html)、[Claude Code](https://code.claude.com/docs/en/skills)。较旧 Python 版 Kimi CLI 的目录优先级不同，见[旧版说明](https://moonshotai.github.io/kimi-cli/en/customization/skills.html)；未发现时按实际版本配置目录。
+用户级目录与调用方式见 [Skill](codebuddycn/SKILL.md#安装与初始化)，依据 [Codex](https://learn.chatgpt.com/docs/build-skills)、[Kimi Code](https://moonshotai.github.io/kimi-code/en/customization/skills.html)、[Claude Code](https://code.claude.com/docs/en/skills) 官方说明；[旧版 Kimi](https://moonshotai.github.io/kimi-cli/en/customization/skills.html) 按实际发现目录处理。
 
-同时使用 Codex 和 Kimi Code 可共用 `~/.agents/skills/codebuddycn/`。Claude Code 可单独复制；macOS/Linux 也可让其 `~/.claude/skills/codebuddycn` 指向这份本机目录，以共用依赖。符号链接由接收者在自己的机器创建，分享包本身没有链接。不要在同一宿主的多个发现目录放不同版本的同名 Skill。
+## 开始使用
 
-其他 harness 若支持 `SKILL.md` 和本地终端执行，也可放入其 Skill 目录；未做逐个宿主实测。仅能聊天、不能运行本地 CLI 的环境无法直接使用此集成。
-
-## 2. 安装 SDK 与 CodeBuddy CLI
-
-基础脚本要求 Node.js `18.20+`，完整测试建议使用支持 `node:sqlite` 的 Node.js `22.13+`。在安装后的 **codebuddycn 目录**执行：
-
-```bash
-npm ci --omit=dev
-node scripts/preflight.mjs
-```
-
-本包使用 `@tencent-ai/agent-sdk@0.3.256`。`node_modules` 不随包分享，由接收者安装。SDK 仍需要独立的 CodeBuddy Code CLI。按[官方安装说明](https://www.codebuddy.cn/docs/cli/installation)安装；已有 CLI 的机器无需重装。npm 方式为：
-
-```bash
-npm install -g @tencent-ai/codebuddy-code
-codebuddy --version
-```
-
-首次由使用者在交互终端运行 `codebuddy`，输入 `/login` 并选择 **Chinese Site**，完成自己的登录。这里不需要向分享者提供账号或 Token，也不强制导入任何账户导出文件。IDE 的 `buddycn chat` 不能替代独立 CLI。
-
-macOS/Linux 如果安装的是原生 CLI，本包 SDK 需要传输适配。请在 `codebuddycn` 目录检查 `command -v codebuddy` / `file` 得到的本机路径，再执行（两个路径先替换）：
-
-```bash
-chmod u+x scripts/native-transport.mjs
-env CODEBUDDYCN_NATIVE_BIN="/your/actual/codebuddy" \
-  CODEBUDDYCN_BIN="/your/installed/codebuddycn/scripts/native-transport.mjs" \
-  node scripts/preflight.mjs
-```
-
-模型调用也要带这两个变量；Skill 已包含这条指令。具体背景见 [原生 CLI 适配](codebuddycn/references/headless-development.md)。无需修改全局登录或把 Token 写进环境配置示例。
-
-## 3. 开始使用
-
-在宿主里明确选择账号方式与模型，例如：
+安装并完成自己的 CodeBuddy 登录后，对智能体说：
 
 > 用 codebuddycn，通过我当前 CodeBuddy CLI 登录账户和当前默认模型，审查下面的方案。只给建议，不开放项目操作工具。
 
-也可以指定具体模型 ID。分享版不带固定模型路由，模型可用性与额度由使用者自己的账号决定。
+也可指定具体模型 ID。模型可用性和额度由你自己的账号决定，分享版不带固定模型路由。
 
-需要多账户功能时，由使用者明确授权处理自己的 Cockpit/WorkBuddy 导出文件。凭据进入操作系统凭据服务；不导入也可以沿用 CLI 登录态。多账户依赖为 macOS Keychain 和编译 helper 所需的 clang、Windows DPAPI，或 Linux `secret-tool` 与可用的 Secret Service；没有明文存储回退。
+多账户是可选功能，需要使用者授权导入自己的 Cockpit/WorkBuddy 导出文件；不导入也可以使用 CLI 登录态。凭据保存到 macOS Keychain、Windows DPAPI 或 Linux Secret Service，没有明文回退。详见 [账户说明](codebuddycn/references/cli.md)。
 
-跨账户恢复会修改本地会话存储，必须按 [恢复说明](codebuddycn/references/cross-account-resume.md)执行。它不是服务端官方跨号迁移保证，不能靠复制整个私人数据目录来分享 Skill。
+[跨账户恢复](codebuddycn/references/cross-account-resume.md)会修改本地会话存储；它不是官方服务端跨号迁移保证。
 
-## 4. 本地检查与验证范围
+## 本地测试与分享
 
-在 Skill 目录执行以下命令，不会发送真实模型请求：
+在安装后的 `codebuddycn/` 目录执行 `npm test`，测试使用虚构 SDK/CLI、账户和临时会话数据，不发送真实模型请求。环境检查及 dry-run 命令见 [Skill 安装步骤](codebuddycn/SKILL.md#安装与初始化)。
 
-```bash
-node scripts/codebuddycn-run.mjs --dry-run --prompt "检查参数" --format json
-npm test
-```
+包中不附带账号、Token、手机号/邮箱名册、真实会话、个人模型偏好、个人机器路径或外部符号链接。`cb01` / `cb02` 是占位别名，测试中的账户与会话是虚构数据。
 
-测试使用虚构 SDK/CLI 和临时会话数据。`npm test` 的会话测试直接使用 `node:sqlite`，因此需要 Node.js `22.13+`。跨账户恢复运行时也可使用系统 `sqlite3` 作为后备。
-
-本次交付验证覆盖格式、路径、离线模拟与本机预检；没有在三个宿主中分别发送付费模型请求，也没有验证 Windows/Linux 的真实认证流程。接收者完成自己的登录后才能确认其账户、模型和 CLI 版本的实际可用性。
-
-## 5. 分享内容
-
-`codebuddycn/` 中包含 Skill、脚本/测试、参考资料、Codex 可选 UI 元数据和 npm 依赖描述。后续再次打包时只携带这些源文件。
-
-不要加入账号导出、`accounts-v1.json`、`.env`、系统凭据、CodeBuddy 数据目录、会话数据库/备份、任务日志、个人宿主配置、`node_modules` 或缓存。本包 `.gitignore` 只是常用排除提示，压缩文件仍需检查实际内容。
+再次分享时只携带 Skill 文本、脚本/测试、参考资料、UI 元数据和 npm 依赖描述。不要加入账号导出、`accounts-v1.json`、`.env`、系统凭据、CodeBuddy 数据目录、会话数据库/备份、任务日志、个人宿主配置、`node_modules` 或缓存。`.gitignore` 只是排除提示，压缩包仍需检查实际内容。

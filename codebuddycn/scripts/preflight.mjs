@@ -6,6 +6,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { listAccountMetadata } from "./codebuddycn-accounts.mjs";
+import { cliCommand, resolveCliEntrypoint } from "./codebuddycn-cli.mjs";
 
 const JSON_OUT = process.argv.includes("--json");
 const WIN = process.platform === "win32";
@@ -53,10 +54,11 @@ function resolveCodeBuddyBin() {
   const home = os.homedir();
   const candidates = WIN
     ? [
+        path.join(process.env.LOCALAPPDATA || path.join(home, "AppData", "Local"), "codebuddy", "bin", "codebuddy.exe"),
         path.join(home, ".codebuddy", "bin", "codebuddy.exe"),
         path.join(home, ".codebuddy", "bin", "cbc.exe"),
-        path.join(home, "AppData", "Roaming", "npm", "codebuddy.cmd"),
-        path.join(home, "AppData", "Roaming", "npm", "cbc.cmd"),
+        path.join(process.env.APPDATA || path.join(home, "AppData", "Roaming"), "npm", "codebuddy.cmd"),
+        path.join(process.env.APPDATA || path.join(home, "AppData", "Roaming"), "npm", "cbc.cmd"),
       ]
     : [
         path.join(home, ".local", "bin", "codebuddy"),
@@ -68,7 +70,8 @@ function resolveCodeBuddyBin() {
 
 function capture(bin, args, timeout = 10_000) {
   try {
-    return execFileSync(bin, args, {
+    const launch = cliCommand(bin, args);
+    return execFileSync(launch.command, launch.args, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
       timeout,
@@ -84,7 +87,8 @@ function acceptsOption(bin, flag, value) {
   if (!bin) return false;
   try {
     const args = value === undefined ? [flag, "--version"] : [flag, value, "--version"];
-    execFileSync(bin, args, {
+    const launch = cliCommand(bin, args);
+    execFileSync(launch.command, launch.args, {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
       timeout: 10_000,
@@ -95,9 +99,9 @@ function acceptsOption(bin, flag, value) {
   }
 }
 
-function nodeAtLeast1820() {
+function nodeAtLeast2213() {
   const [major, minor] = process.versions.node.split(".").map(Number);
-  return major > 18 || (major === 18 && minor >= 20);
+  return major > 22 || (major === 22 && minor >= 13);
 }
 
 function detectIdeCli() {
@@ -117,7 +121,13 @@ function detectIdeCli() {
   return [...new Set(candidates)].find(executable) || null;
 }
 
-const cliBin = resolveCodeBuddyBin();
+let cliBin = null;
+let cliResolutionError = null;
+try {
+  cliBin = resolveCliEntrypoint(resolveCodeBuddyBin());
+} catch (error) {
+  cliResolutionError = String(error?.code || "cli_entrypoint_not_found");
+}
 const versionText = cliBin ? capture(cliBin, ["--version"]) : "";
 const helpText = cliBin ? capture(cliBin, ["--help"]) : "";
 const firstVersionLine = versionText.split(/\r?\n/).find(Boolean) || "";
@@ -173,7 +183,12 @@ const auth = {
 const ideCli = detectIdeCli();
 
 const suggestions = [];
-if (!cliBin) {
+if (!nodeAtLeast2213()) {
+  suggestions.push("本 Skill 要求 Node.js 22.13+；请使用满足该要求的 Node.js 运行时。");
+}
+if (cliResolutionError) {
+  suggestions.push("无法定位 CodeBuddy npm 启动入口：检查 @tencent-ai/codebuddy-code 安装，或将 CODEBUDDYCN_BIN 指向原生 codebuddy.exe。");
+} else if (!cliBin) {
   suggestions.push("CodeBuddy 中国站无头 CLI 未安装：取得用户授权后运行中国站官方原生安装器，或 `npm install -g @tencent-ai/codebuddy-code`；命令仍是 `codebuddy`/`cbc`。");
 } else if (!headlessReady) {
   suggestions.push("当前命令缺少 -p 或 --output-format；请确认它是 CodeBuddy Code CLI，并按官方方式更新。");
@@ -191,7 +206,7 @@ if (ideCli && !cliBin) {
 }
 
 const report = {
-  ok: headlessReady && sdkReady,
+  ok: nodeAtLeast2213() && headlessReady && sdkReady,
   platform: process.platform,
   default_backend: "sdk",
   cli_fallback_ready: headlessReady,
@@ -206,6 +221,7 @@ const report = {
   codebuddy: {
     installed: Boolean(cliBin),
     bin: cliBin,
+    resolution_error: cliResolutionError,
     version: firstVersionLine,
     target: "Chinese Site",
     headless_ready: headlessReady,
@@ -218,7 +234,7 @@ const report = {
   },
   node: {
     version: process.version,
-    npm_install_requirement_met: nodeAtLeast1820(),
+    npm_install_requirement_met: nodeAtLeast2213(),
   },
   auth,
   suggestions,
@@ -226,7 +242,7 @@ const report = {
 
 if (JSON_OUT) {
   process.stdout.write(`${JSON.stringify(report)}\n`);
-  process.exit(headlessReady && sdkReady ? 0 : 1);
+  process.exit(report.ok ? 0 : 1);
 }
 
 const mark = (value) => (value ? "✅" : "❌");
@@ -237,7 +253,7 @@ console.log("──────────────────────�
   console.log(`  Agent SDK（默认）  : ${mark(sdkReady)} ${sdkVersion || "未安装"}`);
   console.log(`  CLI 路径           : ${cliBin || "—"}`);
 console.log(`  buddycn (IDE 启动器): ${ideCli ? `⚠️ ${ideCli}（仅 UI，不作后端）` : "—"}`);
-console.log(`  Node               : ✅ ${process.version} (npm 安装要求: ${nodeAtLeast1820() ? "满足" : "不满足 18.20+"})`);
+console.log(`  Node               : ${mark(nodeAtLeast2213())} ${process.version} (本 Skill 要求: 22.13+)`);
 console.log(`  中国站目标         : Chinese Site（由 CLI 登录选择）`);
 console.log(`  环境凭据           : ${auth.api_key_env || auth.auth_token_env ? "已配置（值未读取）" : "未发现；OAuth 登录态未探测"}`);
 console.log(`  安全账户库         : ${auth.stored_account_count} 个账户${accountStoreDiagnostic ? `（${accountStoreDiagnostic}）` : ""}`);
@@ -247,4 +263,4 @@ if (suggestions.length) {
   console.log("  建议：");
   for (const suggestion of suggestions) console.log(`   • ${suggestion}`);
 }
-process.exit(headlessReady && sdkReady ? 0 : 1);
+process.exit(report.ok ? 0 : 1);

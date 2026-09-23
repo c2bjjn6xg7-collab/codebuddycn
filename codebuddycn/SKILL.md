@@ -1,11 +1,44 @@
 ---
 name: codebuddycn
-description: Call CodeBuddy Chinese Site models through Tencent's official Agent SDK and local CLI. Use for CodeBuddy CN model requests, authorized Cockpit or WorkBuddy account import, account selection, and persisted conversation resume. Works from local agent harnesses such as Kimi Code, Codex, and Claude Code. Do not use the CodeBuddy CN IDE launcher as the backend.
+description: Install, configure, and call CodeBuddy Chinese Site models through Tencent's official Agent SDK and local CLI. Use for this CodeBuddy CN integration, authorized Cockpit or WorkBuddy account import, account selection, and persisted conversation resume. Works from local agent harnesses such as Kimi Code, Codex, and Claude Code. Do not use the CodeBuddy CN IDE launcher as the backend.
 ---
 
 # CodeBuddy CN — 通用 Skill
 
 通过官方 `@tencent-ai/agent-sdk` 控制本机 CodeBuddy Code CLI，调用使用者自己的中国站账号模型。适用于能够读取 Skill 文件并执行本地 Node.js 命令的 agent harness。它不会把订阅额度转换成通用 HTTP API。
+
+## 安装与初始化
+
+用户说“安装这个 Skill”时，由智能体完成以下流程，不要求用户复制长指令或逐条执行命令。该请求包括本 Skill、SDK 和缺失的独立 CLI 的安装；复用现有可用依赖，不自行升级或覆盖用户配置。仅审查仓库时不执行安装。
+
+1. **识别环境。** 确认当前宿主、操作系统、shell，以及 Node.js `22.13+` 和 npm。优先使用已安装的合适运行时；缺少时按 [Node.js 官方方式](https://nodejs.org/en/download)和本机权限安装受支持的 LTS 版本。Windows 使用 PowerShell/CMD 对应语法，不照搬 Bash 的 `env`、`chmod` 或续行符。
+2. **安装完整目录。** 从 [本仓库](https://github.com/c2bjjn6xg7-collab/codebuddycn)获取内层 `codebuddycn/`，将整个目录复制到当前宿主的用户级位置。已有同名 Skill 时先比较，复用相同版本、保留本地修改；避免复制成 `codebuddycn/codebuddycn`。
+
+   | 宿主 | 用户级 Skill 目录 |
+   |---|---|
+   | Codex / 当前 Kimi Code | `~/.agents/skills/codebuddycn/` |
+   | Claude Code | `~/.claude/skills/codebuddycn/` |
+
+   `~` 表示实际用户主目录；Windows 对应 `%USERPROFILE%`，PowerShell 中可用 `$env:USERPROFILE`。宿主已指定自定义 Skill 目录时沿用其设置；旧版 Kimi 按实际发现目录安装。Codex 和 Kimi 可共用一份目录，同一宿主不要在多个发现目录安装不同版本的同名 Skill。安装的是本 Skill，不是更改 CodeBuddy 自己的配置目录。完成复制后，以下 `{baseDir}` 均指**安装后的目录**。
+3. **安装依赖和 CLI。** 在 `{baseDir}` 执行 `npm ci --omit=dev`。检查 `codebuddy --version`；已有可用独立 CLI 就复用，缺少时按 [官方安装说明](https://www.codebuddy.cn/docs/cli/installation)安装，npm 方式为 `npm install -g @tencent-ai/codebuddy-code`。不要把 `buddycn` IDE 启动器当成 CLI。
+4. **匹配启动方式。** Windows 的官方 npm `.cmd` 入口由脚本自动解析到包内 Node 入口，原生 `.exe` 直接启动；不需要 macOS/Linux 的原生适配器。macOS/Linux 检查 `codebuddy` 的实际路径和文件类型，原生二进制按下文“原生 CLI 适配”设置。将这些操作和实际路径由智能体完成，不把示例路径交给用户填写。
+5. **完成本地检查。** 在 `{baseDir}` 执行 `node scripts/preflight.mjs --json` 和 `node scripts/codebuddycn-run.mjs --dry-run --prompt "本地参数检查" --format json`；需要原生适配时，两条命令都带下文的环境变量。检查失败就处理明确的依赖或路径问题后重跑；这两项不会发送模型请求，也不证明已登录或模型可用。
+6. **交付可用入口。** 简短报告安装位置和检查结果。首次登录由使用者在交互终端运行 `codebuddy`、输入 `/login` 并选择 **Chinese Site**；已有登录态不要求重新登录。Codex 使用 `$codebuddycn`，Kimi 使用 `/skill:codebuddycn`，Claude Code 使用 `/codebuddycn`。宿主未发现新 Skill 时再新开会话或重启。安装期间不要求选择模型、不导入账户、不发送真实模型请求。
+
+### 原生 CLI 适配（仅 macOS/Linux）
+
+本包固定的 SDK `0.3.256` 通过 Node 启动 CLI，macOS/Linux 原生二进制需要随包的 `scripts/native-transport.mjs`。确认实际 CLI 路径后执行：
+
+```bash
+chmod u+x "{baseDir}/scripts/native-transport.mjs"
+env CODEBUDDYCN_NATIVE_BIN="/verified/native/codebuddy" \
+  CODEBUDDYCN_BIN="{baseDir}/scripts/native-transport.mjs" \
+  node "{baseDir}/scripts/preflight.mjs" --json
+```
+
+由智能体替换两个路径；**每次** dry-run 和模型调用也保留这两个变量。JS CLI 和 Windows `.exe` 不套用此适配。它仍使用 SDK 后端，不改写全局启动器或登录配置。详情见 [references/headless-development.md](references/headless-development.md)。
+
+Windows 已包含 npm/原生 CLI 启动、用户目录和 DPAPI 凭据支持；离线模拟测试不等于 Windows 实机登录和端到端调用验证。
 
 ## 路径与后端
 
@@ -44,17 +77,9 @@ node "{baseDir}/scripts/codebuddycn-accounts.mjs" list
 
    它只检查 CLI 版本、参数和 SDK 导入，并查看账户元数据的数量，不读取凭据值或发送模型请求。预检通过不证明登录有效、模型可用或 SDK 已成功握手。
 
-2. 缺少依赖时说明所需安装。用户已经要求安装本 Skill 时，可在该授权范围安装 SDK；其他情况下先取得安装授权。在 `{baseDir}` 按现有 lockfile 运行 `npm ci --omit=dev`。独立 CLI 安装、首次由用户交互登录、可选多账户导入见 [references/cli.md](references/cli.md)。不自行升级 SDK/CLI、重新登录或修改全局配置。
+2. 缺少依赖时按上文“安装与初始化”处理。用户已经要求安装本 Skill 时，不为同一范围的依赖安装重复询问；其他情况下先取得安装授权。不自行升级 SDK/CLI、重新登录或修改全局配置。
 
-3. **macOS/Linux 原生 CLI：** 本包固定的 SDK `0.3.256` 通过 Node 启动 CLI，原生二进制需要随包的 `scripts/native-transport.mjs`。先检查实际 `codebuddy` 路径及文件类型，再为 preflight 和每次模型调用设置：
-
-   ```bash
-   env CODEBUDDYCN_NATIVE_BIN="/verified/native/codebuddy" \
-     CODEBUDDYCN_BIN="{baseDir}/scripts/native-transport.mjs" \
-     node "{baseDir}/scripts/preflight.mjs"
-   ```
-
-   替换原生 CLI 路径；不要硬编码其他人的用户目录。JS CLI 启动器或 Windows 原生 `.exe` 不盲目套用此适配。完整说明见 [references/headless-development.md](references/headless-development.md)。这仍然使用 SDK 后端。
+3. macOS/Linux 原生 CLI 按上文“原生 CLI 适配”配置，并在 preflight 和后续每次调用中保留两个环境变量；Windows 的 npm 入口自动处理，原生 `.exe` 直接使用。
 
 4. 进行已授权的一次性问答。以下示例假设用户选择了当前 CLI 登录账户和具体模型；若使用导入账户，增加 `--account APPROVED_ALIAS`；原生 CLI 同时保留上一步的两个环境变量：
 

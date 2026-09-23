@@ -9,13 +9,15 @@ Read this file when the SDK's underlying CLI installation, Chinese Site authenti
 
 ## Install and authenticate
 
+用户要求安装本 Skill 时，先执行 [SKILL.md 的“安装与初始化”](../SKILL.md#安装与初始化)，由智能体识别系统、安装依赖并完成自检。本 Skill 统一要求 Node.js **22.13+**；下面的原生 CLI 即使不依赖 Node，Skill 脚本和 SDK 仍然依赖它。
+
 CodeBuddy 中国站的独立 CLI 与 CodeBuddy CN IDE 的 `buddycn` 启动器不同。独立 CLI 在所有站点都叫 `codebuddy`（别名 `cbc`），中国站由登录选项或 API 环境变量决定。官方安装方式包括：
 
 ```bash
 # macOS / Linux native installer (preferred for the China-site CLI)
 curl -fsSL https://copilot.tencent.com/cli/install.sh | bash
 
-# npm alternative; requires Node.js 18.20 or newer
+# npm alternative; this skill requires Node.js 22.13 or newer
 npm install -g @tencent-ai/codebuddy-code
 ```
 
@@ -25,7 +27,9 @@ On Windows, the official native command is:
 irm https://copilot.tencent.com/cli/install.ps1 | iex
 ```
 
-Install only within the user's authorization; an explicit request to install this skill can cover its SDK dependency, so do not ask again for that same scope. After installation, verify with `codebuddy --version`, then run `codebuddy` interactively, enter `/login`, and let the user choose **Log in via Chinese Site**. Authentication may require a browser, so do not attempt to automate credential entry or read its stored tokens.
+An explicit request to install this skill covers its SDK and a missing independent CLI; reuse working installations and do not ask again for that same scope. After installation, verify with `codebuddy --version`. For a first login, let the user run `codebuddy` interactively, enter `/login`, and choose **Log in via Chinese Site**; preserve an existing login. Authentication may require a browser, so do not attempt to automate credential entry or read its stored tokens.
+
+On Windows, the wrapper and preflight resolve official npm `.cmd`/`.bat` shims to the installed package's Node entry. They launch JavaScript with Node and pass arguments directly, without sending prompts through a command shell. Native `.exe` files run directly; no macOS/Linux transport adapter or `chmod` is needed. If automatic lookup fails, set `CODEBUDDYCN_BIN` to the verified local CLI path using PowerShell syntax, then rerun preflight. Windows-specific startup fixtures are covered by offline tests; real Windows authentication and end-to-end model calls are not yet verified.
 
 `CODEBUDDY_API_KEY` is supported, but it is not the default for this skill. For a China-site API key, also set `CODEBUDDY_INTERNET_ENVIRONMENT=internal`. Never print credential values; preflight reports only their presence.
 
@@ -117,7 +121,7 @@ For authorized agentic work, combine the smallest practical tool whitelist with 
 - `--tools "Read,Glob,Grep"` → SDK `tools`
 - repeated `--allowed-tool VALUE` → SDK `allowedTools`
 - repeated `--disallowed-tool VALUE` → SDK `disallowedTools`
-- `--skip-permissions` → SDK `allowDangerouslySkipPermissions` (wrapper mapping only; SDK 0.3.251 does not forward it to the CLI)
+- `--skip-permissions` → SDK `allowDangerouslySkipPermissions` (wrapper mapping only; pinned SDK 0.3.256 does not forward it to the CLI)
 - `--permission-mode MODE` → SDK `permissionMode`
 
 The explicit CLI backend translates those same wrapper flags to the corresponding CLI flags.
@@ -144,7 +148,7 @@ Use `--setting-sources user,project,local` only when project-provided CodeBuddy 
 | `token_refresh_failed` | Check connectivity to CodeBuddy CN and whether the refresh token remains valid; re-export/re-import or log in again if it was revoked. |
 | China API key is rejected or routed incorrectly | Set `CODEBUDDY_INTERNET_ENVIRONMENT=internal`; do not set this merely for an existing OAuth login unless the official flow requires it. |
 | Model rejected | Verify the actual model ID against the user's current selector or rejection. Follow the current user's authorized model choice; omit `--model` only when the user chooses the account default. A stale list is not a rejection. |
-| Tool call blocked in print mode | Prefer explicit context for answer-only tasks. For authorized actions, configure tool exposure and automatic approval separately; SDK 0.3.251 does not forward the wrapper's skip flag. See [headless-development.md](headless-development.md). |
+| Tool call blocked in print mode | Prefer explicit context for answer-only tasks. For authorized actions, configure tool exposure and automatic approval separately; pinned SDK 0.3.256 does not forward the wrapper's skip flag. See [headless-development.md](headless-development.md). |
 | A first headless call hangs or times out | Run `codebuddy` interactively to finish login/account selection; if already logged in, verify configured HTTP(S) proxy reachability. |
 | JSON consumer fails on streaming output | Parse one object per line; `stream-json` is JSONL, not one JSON document. |
 | Project behavior differs unexpectedly | Keep the default user-only setting source, inspect project `.codebuddy` configuration, and do not load it implicitly. |

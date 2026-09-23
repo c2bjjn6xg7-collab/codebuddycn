@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Native transport adapter: forwards SDK argv/stdio/env verbatim to the
-// verified native CodeBuddy CLI. SDK 0.3.251 spawns pathToCodebuddyCode via
+// verified native CodeBuddy CLI. SDK 0.3.256 spawns pathToCodebuddyCode via
 // Node and rewrites */bin/codebuddy to dist/codebuddy-headless.js, which does
 // not exist in the Mach-O native install; this .mjs entry sidesteps that.
 // Native binary path is supplied per-task via CODEBUDDYCN_NATIVE_BIN.

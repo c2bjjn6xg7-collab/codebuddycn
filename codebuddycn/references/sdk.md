@@ -51,7 +51,7 @@ The wrapper maps its stable flags to SDK `query({ prompt, options })` as follows
 | `--allowed-tool` | `allowedTools` |
 | `--disallowed-tool` | `disallowedTools` |
 | `--permission-mode` | `permissionMode` |
-| `--skip-permissions` | `allowDangerouslySkipPermissions` (wrapper mapping only; SDK 0.3.251 does not forward it to the CLI transport) |
+| `--skip-permissions` | `allowDangerouslySkipPermissions` (wrapper mapping only; pinned SDK 0.3.256 does not forward it to the CLI transport) |
 | `--max-turns` | `maxTurns` |
 | `--setting-sources` | `settingSources` |
 | `--persistent` | `persistSession: true` |
