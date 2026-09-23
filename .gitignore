@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+__MACOSX/
+.env
+.env.*
+!.env.example
+*.log
+*.jsonl
+accounts-v1.json
+*accounts*.json
+session-backups/
+*.vscdb
+*.db
+*.sqlite*
